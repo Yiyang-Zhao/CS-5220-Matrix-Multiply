@@ -11,7 +11,7 @@ PYTHON=python3
 
 # Compiler optimization flags.  You will definitely want to play with these!
 OPTFLAGS = -O3 
-CFLAGS = 
+CFLAGS = -march=cascadelake -ftree-vectorize -funroll-loops -ffast-math -mavx512f -mavx512dq -mavx512cd -mavx512bw -mavx512vl -mavx -g -Og
 FFLAGS =
 LDFLAGS = -fopenmp
 

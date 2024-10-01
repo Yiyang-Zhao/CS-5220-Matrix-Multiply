@@ -14,12 +14,7 @@
 #include <string.h>
 #include <float.h>
 #include <math.h>
-
-#ifdef _OPENMP
-#  include <omp.h>
-#else
-#  include <time.h>
-#endif
+#include <omp.h>
 
 #ifndef COMPILER
 #  define COMPILER "unknown"
@@ -32,10 +27,7 @@
   Your function _MUST_ have the following signature:
 */
 extern const char* dgemm_desc;
-extern void square_dgemm(const int M, 
-                         const double * restrict A, 
-			 const double * restrict B, 
-			 double * restrict C);
+extern void square_dgemm();
 
 /*
   We try to run enough iterations to get reasonable timings.  The matrices
@@ -198,23 +190,13 @@ double time_dgemm(const int M, const double *A, const double *B, double *C)
     int num_iterations = MIN_RUNS;
     while (secs < MIN_SECS) {
         matrix_clear(C);
-#ifdef _OPENMP
         double start = omp_get_wtime();
-#else
-	struct timespec ts1, ts2;
-	timespec_get(&ts1, TIME_UTC);
-#endif
         for (int i = 0; i < num_iterations; ++i) {
             square_dgemm(M, A, B, C);
         }
-#ifdef _OPENMP
         double finish = omp_get_wtime();
-        secs = finish-start;
-#else
-	timespec_get(&ts2, TIME_UTC);
-	secs = (ts2.tv_nsec-ts1.tv_nsec)*1e-9 + (ts2.tv_sec-ts1.tv_sec);
-#endif
         double mflops = 2.0 * num_iterations * M * M * M / 1.0e6;
+        secs = finish-start;
         mflops_sec = mflops / secs;
         num_iterations *= 2;
     }
@@ -248,9 +230,9 @@ int main(int argc, char** argv)
         exit(3);
     }
     
-    double* A = (double*) malloc(MAX_SIZE * MAX_SIZE * sizeof(double));
-    double* B = (double*) malloc(MAX_SIZE * MAX_SIZE * sizeof(double));
-    double* C = (double*) malloc(MAX_SIZE * MAX_SIZE * sizeof(double));
+    double* A = (double*) _mm_malloc(MAX_SIZE * MAX_SIZE * sizeof(double), 64);
+    double* B = (double*) _mm_malloc(MAX_SIZE * MAX_SIZE * sizeof(double), 64);
+    double* C = (double*) _mm_malloc(MAX_SIZE * MAX_SIZE * sizeof(double), 64);
 
     matrix_init(A);
     matrix_init(B);
@@ -265,9 +247,9 @@ int main(int argc, char** argv)
         fprintf(fp, "%u,%lg\n", M, time_dgemm(M, A, B, C));
     }
 
-    free(C);
-    free(B);
-    free(A);
+    _mm_free(C);
+    _mm_free(B);
+    _mm_free(A);
 
     fclose(fp);
     return 0;
